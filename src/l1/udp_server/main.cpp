@@ -3,11 +3,38 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include <socket_wrapper/socket_headers.h>
 #include <socket_wrapper/socket_wrapper.h>
 #include <socket_wrapper/socket_class.h>
-
+struct ClientName {
+	int client_number;
+	std::string client_ip_address;
+	unsigned short client_port;
+};
+const ClientName* registration_client (std::string client_ip_address, unsigned short client_port, std::vector <ClientName*>& clients)
+{
+	if (clients.empty()) {
+		ClientName* new_client = new ClientName;
+		new_client -> client_number = 1;
+		new_client -> client_ip_address = client_ip_address;
+		new_client -> client_port = client_port;
+		clients.push_back(new_client);
+		return new_client;
+	}
+	for (int i = 0; i < clients.size(); i++) {
+		if ((clients[i] -> client_ip_address == client_ip_address)&&(clients[i] -> client_port == client_port)) {
+			return clients[i];
+		}
+	}
+	ClientName* new_client = new ClientName;
+	new_client -> client_number = clients.size() + 1;
+	new_client -> client_ip_address = client_ip_address;
+	new_client -> client_port = client_port;
+	clients.push_back(new_client);
+	return new_client;
+}
 
 // Trim from end (in place).
 static inline std::string& rtrim(std::string& s)
@@ -63,6 +90,7 @@ int main(int argc, char const *argv[])
 
     std::cout << "Running echo server...\n" << std::endl;
     char client_address_buf[INET_ADDRSTRLEN];
+    std::vector <ClientName*> client_names;
 
     while (true)
     {
@@ -70,14 +98,15 @@ int main(int argc, char const *argv[])
         recv_len = recvfrom(sock, buffer, sizeof(buffer) - 1, 0,
                             reinterpret_cast<sockaddr *>(&client_address),
                             &client_address_len);
-
+        
+	const ClientName* client = registration_client (inet_ntop (AF_INET, &client_address.sin_addr, client_address_buf, sizeof(client_address_buf) / sizeof(client_address_buf[0])), ntohs(client_address.sin_port), client_names);
         if (recv_len > 0)
         {
             buffer[recv_len] = '\0';
             std::cout
-                << "Client with address "
-                << inet_ntop(AF_INET, &client_address.sin_addr, client_address_buf, sizeof(client_address_buf) / sizeof(client_address_buf[0]))
-                << ":" << ntohs(client_address.sin_port)
+                << "Client "<< client -> client_number<<" with address "
+                << client -> client_ip_address
+                << ":" << client -> client_port
                 << " sent datagram "
                 << "[length = "
                 << recv_len
@@ -102,4 +131,12 @@ int main(int argc, char const *argv[])
 
     return EXIT_SUCCESS;
 }
+
+/*struct sockaddr_in
+{
+    short int          sin_family;  // Семейство адресов, AF_INET.
+    unsigned short int sin_port;    // Номер порта в сетевом порядке байт.
+    struct in_addr     sin_addr;    // Internet address.
+    unsigned char      sin_zero[8]; // Заполнение для соответствия размеру struct sockaddr
+};*/
 
