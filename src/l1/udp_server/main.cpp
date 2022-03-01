@@ -102,7 +102,7 @@ int main(int argc, char const *argv[])
 	const ClientName* client = registration_client (inet_ntop (AF_INET, &client_address.sin_addr, client_address_buf, sizeof(client_address_buf) / sizeof(client_address_buf[0])), ntohs(client_address.sin_port), client_names);
         if (recv_len > 0)
         {
-            buffer[recv_len] = '\0';
+            buffer[recv_len - 1] = '\0';
             std::cout
                 << "Client "<< client -> client_number<<" with address "
                 << client -> client_ip_address
@@ -122,11 +122,23 @@ int main(int argc, char const *argv[])
             std::cout << command_string << std::endl;
 */
             // Send same content back to the client ("echo").
+            /*bool exit_flag = false;
+            if (buffer[0] == 'e') {
+            	if (buffer[1] == 'x') {
+            		if (buffer[2] == 'i') {
+            			if(buffer[3] == 't')
+            				if (buffer[4] == '\0') exit_flag = true;
+            		}
+            	}
+            }
+            if (exit_flag == true) break;*/
+            std::string exit_string = buffer;
+            if (exit_string == "exit") break;
             sendto(sock, buffer, recv_len, 0, reinterpret_cast<const sockaddr *>(&client_address),
                    client_address_len);
         }
-
         std::cout << std::endl;
+
     }
 
     return EXIT_SUCCESS;
