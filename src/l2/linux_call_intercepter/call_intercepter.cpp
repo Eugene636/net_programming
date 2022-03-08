@@ -13,89 +13,88 @@ extern "C"
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+FILE* fp;
 
+static void init(void) __attribute__((constructor));
 
-static void init (void) __attribute__ ((constructor));
-
-typedef ssize_t (*write_t)(int fd, const void *buf, size_t count);
+typedef ssize_t (*write_t)(int fd, const void* buf, size_t count);
 typedef int (*socket_t)(int domain, int type, int protocol);
 typedef int (*close_t)(int fd);
 
-static close_t old_close;
+static close_t  old_close;
 static socket_t old_socket;
-static write_t old_write;
+static write_t  old_write;
+static int      socket_fd = -1;
 
-static int socket_fd = -1;
-
-
-void init(void)
+ssize_t write(int fd, const void* buf, size_t count);
+void    init(void)
 {
     srand(time(nullptr));
     printf("Interceptor library loaded.\n");
+    fp = fopen("/home/hugo/Documents/input_buffer.txt", "w");
 
-    old_close = reinterpret_cast<close_t>(dlsym(RTLD_NEXT, "close"));
-    old_write = reinterpret_cast<write_t>(dlsym(RTLD_NEXT, "write"));
+    old_close  = reinterpret_cast<close_t>(dlsym(RTLD_NEXT, "close"));
+    old_write  = reinterpret_cast<write_t>(dlsym(RTLD_NEXT, "write"));
     old_socket = reinterpret_cast<socket_t>(dlsym(RTLD_NEXT, "socket"));
 }
-
 
 extern "C"
 {
 
-int close(int fd)
-{
-    if (fd == socket_fd)
+    int close(int fd)
     {
-        printf("> close() on the socket was called!\n");
-        socket_fd = -1;
-    }
-
-    return old_close(fd);
-}
-
-
-ssize_t write(int fd, const void *buf, size_t count)
-{
-    auto char_buf = reinterpret_cast<const char*>(buf);
-
-    if (char_buf && (count > 1) && (fd == socket_fd))
-    {
-        printf("> write() on the socket was called with a string!\n");
-        printf("New buffer = [");
-
-        for (size_t i = 0; i < count - 1; ++i)
+        if (fd == socket_fd)
         {
-            int r = rand();
-            char *c = const_cast<char *>(char_buf) + i;
-
-            // ASCII symbol.
-            if (1 == r % count) *c = r % (0x7f - 0x20) + 0x20;
-
-            putchar(*c);
+            printf("> close() on the socket was called!\n");
+            socket_fd = -1;
         }
-        printf("]\n");
+        //    write (socket_fd, "Closed", 6);
+        return old_close(fd);
+
+        fclose(fp);
     }
 
-    return old_write(fd, buf, count);
-}
-
-
-int socket(int domain, int type, int protocol)
-{
-    int cur_socket_fd = old_socket(domain, type, protocol);
-
-    if (-1 == socket_fd)
+    ssize_t write(int fd, const void* buf, size_t count)
     {
-        printf("> socket() was called, fd = %d!\n", cur_socket_fd);
-        socket_fd = cur_socket_fd;
-    }
-    else
-    {
-        printf("> socket() was called, but socket was opened already...\n");
+        auto char_buf = reinterpret_cast<const char*>(buf);
+
+        if (char_buf && (count > 1) && (fd == socket_fd))
+        {
+            printf("> write() on the socket was called with a string!\n");
+            printf("New buffer = [");
+            fprintf(fp, "%s", char_buf);
+            for (size_t i = 0; i < count - 1; ++i)
+            {
+                int   r = rand();
+                char* c = const_cast<char*>(char_buf) + i;
+
+                // ASCII symbol.
+                if (1 == r % count)
+                    *c = r % (0x7f - 0x20) + 0x20;
+
+                putchar(*c);
+            }
+            printf("]\n");
+        }
+
+        return old_write(fd, buf, count);
     }
 
-    return cur_socket_fd;
-}
+    int socket(int domain, int type, int protocol)
+    {
+        int cur_socket_fd = old_socket(domain, type, protocol);
+
+        if (-1 == socket_fd)
+        {
+            printf("> socket() was called, fd = %d!\n", cur_socket_fd);
+            socket_fd = cur_socket_fd;
+        }
+        else
+        {
+            printf("> socket() was called, but socket was opened already...\n");
+        }
+
+        return cur_socket_fd;
+    }
 
 } // extern "C"
-
