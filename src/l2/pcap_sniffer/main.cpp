@@ -1,31 +1,32 @@
-#include <iostream>
-#include <string>
 #include <cctype>
 #include <cerrno>
+#include <iostream>
+#include <string>
 
 #include <pcap.h>
 
 #include "packet_printer.h"
 
 // Default snap length (maximum bytes per packet to capture).
-const auto SNAP_LEN = 1518;
+const auto SNAP_LEN              = 1518;
 const auto MAX_PACKET_TO_CAPTURE = 10;
 
-static void pcap_callback(u_char *args, const pcap_pkthdr *header, const u_char *packet)
+static void pcap_callback(u_char*            args,
+                          const pcap_pkthdr* header,
+                          const u_char*      packet)
 {
     static PacketPrinter p_printer;
 
     p_printer.got_packet(args, header, packet);
 };
 
-
-int main(int argc, const char * const argv[])
+int main(int argc, const char* const argv[])
 {
     std::string dev;
     // Pcap error buffer.
     char errbuf[PCAP_ERRBUF_SIZE];
     // Packet capture handle.
-    pcap_t *handle;
+    pcap_t* handle;
 
     std::string filter_exp = "ip";
     // Compiled filter program (expression).
@@ -43,22 +44,23 @@ int main(int argc, const char * const argv[])
     else if (argc > 2)
     {
         std::cerr << "error: unrecognized command-line options\n" << std::endl;
-        std::cout
-            << "Usage: " << argv[0] << " [interface]\n\n"
-            << "Options:\n"
-            << "    interface    Listen on <interface> for packets.\n"
-            << std::endl;
+        std::cout << "Usage: " << argv[0] << " [interface]\n\n"
+                  << "Options:\n"
+                  << "    interface    Listen on <interface> for packets.\n"
+                  << std::endl;
 
         exit(EXIT_FAILURE);
     }
     else
     {
         // Find a capture device if not specified on command-line.
-        pcap_if_t *all_devs_sp;
+        pcap_if_t* all_devs_sp;
 
-        if (pcap_findalldevs(&all_devs_sp, errbuf) != 0 || nullptr == all_devs_sp)
+        if (pcap_findalldevs(&all_devs_sp, errbuf) != 0 ||
+            nullptr == all_devs_sp)
         {
-            std::cerr << "Couldn't find default device: \"" << errbuf << "\"" << std::endl;
+            std::cerr << "Couldn't find default device: \"" << errbuf << "\""
+                      << std::endl;
             return EXIT_FAILURE;
         }
         dev = all_devs_sp->name;
@@ -68,24 +70,25 @@ int main(int argc, const char * const argv[])
     // Get network number and mask associated with capture device.
     if (-1 == pcap_lookupnet(dev.c_str(), &net, &mask, errbuf))
     {
-        std::cerr << "Couldn't get netmask for device \"" << dev << "\": " << errbuf << std::endl;
-        net = 0;
+        std::cerr << "Couldn't get netmask for device \"" << dev
+                  << "\": " << errbuf << std::endl;
+        net  = 0;
         mask = 0;
     }
 
     // Print capture info.
-    std::cout
-        << "Device: " << dev << "\n"
-        << "Network mask: " << mask << "\n"
-        << "Network: " << net << "\n"
-        << "Number of packets: " << num_packets << "\n"
-        << "Filter expression: " << filter_exp << std::endl;
+    std::cout << "Device: " << dev << "\n"
+              << "Network mask: " << mask << "\n"
+              << "Network: " << net << "\n"
+              << "Number of packets: " << num_packets << "\n"
+              << "Filter expression: " << filter_exp << std::endl;
 
     // Open capture device.
     handle = pcap_open_live(dev.c_str(), SNAP_LEN, 1, 1000, errbuf);
     if (nullptr == handle)
     {
-        std::cerr << "Couldn't open device \"" << dev << "\": " << errbuf << "!" << std::endl;
+        std::cerr << "Couldn't open device \"" << dev << "\": " << errbuf << "!"
+                  << std::endl;
         exit(EXIT_FAILURE);
     }
 
@@ -99,14 +102,16 @@ int main(int argc, const char * const argv[])
     // Compile the filter expression.
     if (pcap_compile(handle, &fp, filter_exp.c_str(), 0, net) == -1)
     {
-        std::cerr << "Couldn't parse filter \"" << filter_exp << "\": " << pcap_geterr(handle) << "!" << std::endl;
+        std::cerr << "Couldn't parse filter \"" << filter_exp
+                  << "\": " << pcap_geterr(handle) << "!" << std::endl;
         exit(EXIT_FAILURE);
     }
 
     // Apply the compiled filter.
     if (-1 == pcap_setfilter(handle, &fp))
     {
-        std::cerr << "Couldn't install filter \"" << filter_exp << "\": " << pcap_geterr(handle) << "!" << std::endl;
+        std::cerr << "Couldn't install filter \"" << filter_exp
+                  << "\": " << pcap_geterr(handle) << "!" << std::endl;
         exit(EXIT_FAILURE);
     }
 
