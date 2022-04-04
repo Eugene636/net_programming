@@ -16,14 +16,14 @@ int print_ips_with_getaddrinfo(const std::string &host_name)
     socket_wrapper::SocketWrapper sock_wrap;
 
     std::cout
-        << "Getting name for \"" << host_name << "\"...\n"
+        << "Getting nam for \"" << host_name << "\"...\n"
         << "Using getaddrinfo() function." << std::endl;
 
     addrinfo hints =
     {
         .ai_flags= AI_CANONNAME,
         // Неважно, IPv4 или IPv6.
-        .ai_family = AF_UNSPEC,
+        .ai_family = AF_INET6,
         // TCP stream-sockets.
         .ai_socktype = SOCK_STREAM,
         // Any protocol.
